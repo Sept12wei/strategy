@@ -1,5 +1,5 @@
 """
-本交易策略目的在于2.30-3.00之间，判断当天是否买入，卖出点为第二天收盘之前
+本策略为简单移动平均策略，当5日均线上传10日均线时，第二天买入股票
 """
 
 import matplotlib.pyplot as plt
@@ -18,22 +18,23 @@ from matplotlib.patches import FancyArrowPatch
 
 
 # 计算股票指标
-def plot_stock_strategy(ticker, start_date, end_date):
+def plot_stock_strategy(ticker, start_date, end_date, short, long, frequency):
     # 获取股票数据
-    data = yf.Ticker(ticker).history(period="max", interval="1d",
+    data = yf.Ticker(ticker).history(period="max", interval=frequency,
                                      start=start_date, end=end_date, prepost=False,
                                      actions=False, auto_adjust=False,
                                      back_adjust=False, proxy=None,
                                      rounding=False, many=True)
+    data.dropna(inplace=True)  # 删除包含NaN的行
 
     # 计算5日和10日简单移动平均线
-    data['SMA_5'] = data['Close'].rolling(5).mean()
-    data['SMA_10'] = data['Close'].rolling(10).mean()
+    data['SMA_short'] = data['Close'].rolling(short).mean()
+    data['SMA_long'] = data['Close'].rolling(long).mean()
     # 计算股票收益率
     data['returns'] = np.log(data['Close'] / data['Close'].shift(1))
     data['returns_dis'] = data['Close'] / data['Close'].shift(1) - 1
     # 根据5日均线和10日均线确定持仓位置
-    data['position'] = np.where(data['SMA_5'] > data['SMA_10'], 1, 0)
+    data['position'] = np.where(data['SMA_short'] > data['SMA_long'], 1, 0)
     # 去除NaN值
     data.dropna(inplace=True)
     # 计算策略收益
@@ -109,7 +110,7 @@ def calculate_sharpe_ratio(data, risk_free_rate):
 def calculate_volatility(data, window_size=252):
     # 计算日收益率的标准差
     volatility = data['returns'].std(ddof=1) * np.sqrt(window_size)
-    print(f'股票日波动率: {volatility:.2f}%')
+    print(f'股票年化波动率: {volatility:.2f}%')
     return volatility
 
 
